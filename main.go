@@ -39,26 +39,26 @@ func init() {
 }
 
 func main() {
-	logger := logger.NewLogger(getenv("LOG_LEVEL", "info")) // "debug", "info", "warn", "error", "fatal"
+	loggerInstance := logger.NewLogger(getenv("LOG_LEVEL", "info")) // "debug", "info", "warn", "error", "fatal"
 	server, err := newServer(
-		logger,
+		loggerInstance,
 		getenv("SERVICE_NAMESPACE", "ingress-nginx"),
 		getenv("SERVICE_NAME", "ingress-nginx-controller"),
 		getenv("SERVICE_PORT", "80"),
 	)
 	if err != nil {
-		logger.Fatalw("Couldn't initialize server", "err", err)
+		loggerInstance.Fatalw("Couldn't initialize server", "err", err)
 	}
 
 	http.HandleFunc("/", server.handleRequest)
 
 	bindAddr := ":" + getenv("PORT", "8080")
 
-	logger.Infow("Starting server", "addr", bindAddr)
+	loggerInstance.Infow("Starting server", "addr", bindAddr)
 	err = http.ListenAndServe(bindAddr, nil)
 
 	if err != nil {
-		logger.Fatalw("Error running server", "err", err)
+		loggerInstance.Fatalw("Error running server", "err", err)
 	}
 }
 
@@ -107,5 +107,6 @@ func getenv(key, fallback string) string {
 }
 
 func (s *server) handleRequest(rw http.ResponseWriter, r *http.Request) {
-
+	s.Logger.Debugw("Handled validation request", "method", r.Method, "url", r.URL, "status", http.StatusNoContent, "method", r.Method, "userAgent", r.UserAgent())
+	rw.WriteHeader(http.StatusNoContent)
 }
