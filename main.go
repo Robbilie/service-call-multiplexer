@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/robbilie/service-call-multiplexer/logger"
+	"io"
+	"io/ioutil"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -121,6 +124,17 @@ func getenv(key, fallback string) string {
 func (s *server) handleRequest(rw http.ResponseWriter, r *http.Request) {
 	s.Logger.Debugw("Handled validation request", "method", r.Method, "url", r.URL, "status", http.StatusNoContent, "method", r.Method, "userAgent", r.UserAgent())
 
+	var body []byte
+	if r.Body != nil {
+		b, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			s.Logger.Errorw("failed to parse body", err)
+			rw.WriteHeader(500)
+			return
+		}
+		body = b
+	}
+
 	pods, err := s.ClientSet.CoreV1().Pods(s.Namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: s.LabelSelector})
 	if err != nil {
 		s.Logger.Errorw("failed to send request", err)
@@ -132,7 +146,7 @@ func (s *server) handleRequest(rw http.ResponseWriter, r *http.Request) {
 	var wg sync.WaitGroup
 	for _, pod := range pods.Items {
 		wg.Add(1)
-		go s.makeCall(pod, r, ch, &wg)
+		go s.makeCall(pod, r, body, ch, &wg)
 	}
 
 	go func() {
@@ -149,7 +163,7 @@ func (s *server) handleRequest(rw http.ResponseWriter, r *http.Request) {
 	rw.WriteHeader(http.StatusNoContent)
 }
 
-func (s *server) makeCall(pod v1.Pod, r *http.Request, ch chan<- int, wg *sync.WaitGroup) {
+func (s *server) makeCall(pod v1.Pod, r *http.Request, body []byte, ch chan<- int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	s.Logger.Debugw("pod info", pod.GetName(), pod.Spec.NodeName, pod.Spec.Containers)
 	request := r.Clone(context.TODO())
@@ -160,6 +174,7 @@ func (s *server) makeCall(pod v1.Pod, r *http.Request, ch chan<- int, wg *sync.W
 		// explicitly disable User-Agent so it's not set to default value
 		request.Header.Set("User-Agent", "")
 	}
+	request.Body = io.NopCloser(bytes.NewReader(body))
 	response, err := s.HttpClient.Do(request)
 	if err != nil {
 		s.Logger.Errorw("failed to send request", err)
