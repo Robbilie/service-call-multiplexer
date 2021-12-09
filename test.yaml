@@ -1,0 +1,87 @@
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: service-call-multiplexer
+  namespace: ingress-nginx
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - services
+    verbs:
+      - list
+      - get
+      - create
+      - update
+      - patch
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: service-call-multiplexer
+  namespace: ingress-nginx
+roleRef:
+  kind: Role
+  name: service-call-multiplexer
+  apiGroup: ""
+subjects:
+  - kind: ServiceAccount
+    name: service-call-multiplexer-service-account
+    namespace: ingress-nginx
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: service-call-multiplexer-service-account
+  namespace: ingress-nginx
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-call-multiplexer-v1
+  namespace: ingress-nginx
+  labels:
+    app: service-call-multiplexer
+    version: v1
+spec:
+  selector:
+    matchLabels:
+      app: service-call-multiplexer
+      version: v1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: service-call-multiplexer
+        version: v1
+    spec:
+      serviceAccountName: service-call-multiplexer-service-account
+      containers:
+        - name: service-call-multiplexer
+          image: ghcr.io/robbilie/service-call-multiplexer:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: LOG_LEVEL
+              value: "info"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-call-multiplexer
+  namespace: ingress-nginx
+  labels:
+    app: service-call-multiplexer
+    service: service-call-multiplexer
+spec:
+  type: ClusterIP
+  selector:
+    app: service-call-multiplexer
+  ports:
+    - port: 8080
+      protocol: TCP
+      name: http

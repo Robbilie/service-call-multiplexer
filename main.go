@@ -149,7 +149,7 @@ func (s *server) handleRequest(rw http.ResponseWriter, r *http.Request) {
 func (s *server) makeCall(pod v1.Pod, r *http.Request, ch chan<- int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	log.Println(pod.GetName(), pod.Spec.NodeName, pod.Spec.Containers)
-	request, err := http.NewRequest(r.Method, s.Protocol+"://"+pod.Status.PodIP+r.URL.Path, nil)
+	request, err := http.NewRequest(r.Method, s.Protocol+"://"+pod.Status.PodIP+":"+s.Port+r.URL.Path, nil)
 	if err != nil {
 		panic(err.Error())
 	}
