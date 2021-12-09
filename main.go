@@ -139,7 +139,7 @@ func (s *server) handleRequest(rw http.ResponseWriter, r *http.Request) {
 	}()
 
 	for statusCode := range ch {
-		if statusCode < 100 || statusCode >= 300 {
+		if statusCode < 200 || statusCode >= 300 {
 			panic(err.Error())
 		}
 	}
