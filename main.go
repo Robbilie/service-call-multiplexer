@@ -47,7 +47,7 @@ func main() {
 		getenv("SERVICE_NAMESPACE", "ingress-nginx"),
 		getenv("SERVICE_NAME", "ingress-nginx-controller"),
 		getenv("SERVICE_PORT", "80"),
-		getenv("SERVICE_PROTOCOL", "http"),
+		getenv("SERVICE_SCHEME", "http"),
 	)
 	if err != nil {
 		loggerInstance.Fatalw("Couldn't initialize server", "err", err)
@@ -69,13 +69,13 @@ type server struct {
 	Namespace     string
 	LabelSelector string
 	Port          string
-	Protocol      string
+	Scheme        string
 	ClientSet     *kubernetes.Clientset
 	HttpClient    http.Client
 	Logger        logger.Logger
 }
 
-func newServer(logger logger.Logger, serviceNamespace string, serviceName string, servicePort string, serviceProtocol string) (*server, error) {
+func newServer(logger logger.Logger, serviceNamespace string, serviceName string, servicePort string, serviceScheme string) (*server, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		panic(err.Error())
@@ -103,7 +103,7 @@ func newServer(logger logger.Logger, serviceNamespace string, serviceName string
 		Namespace:     serviceNamespace,
 		LabelSelector: set.AsSelector().String(),
 		Port:          servicePort,
-		Protocol:      serviceProtocol,
+		Scheme:        serviceScheme,
 		ClientSet:     clientSet,
 		HttpClient:    client,
 		Logger:        logger,
@@ -155,6 +155,11 @@ func (s *server) makeCall(pod v1.Pod, r *http.Request, ch chan<- int, wg *sync.W
 	request := r.Clone(context.TODO())
 	request.RequestURI = ""
 	request.URL.Host = pod.Status.PodIP + ":" + s.Port
+	request.URL.Scheme = s.Scheme
+	if _, ok := request.Header["User-Agent"]; !ok {
+		// explicitly disable User-Agent so it's not set to default value
+		request.Header.Set("User-Agent", "")
+	}
 	response, err := s.HttpClient.Do(request)
 	if err != nil {
 		s.Logger.Errorw("failed to send request", err)
