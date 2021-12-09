@@ -123,7 +123,8 @@ func (s *server) handleRequest(rw http.ResponseWriter, r *http.Request) {
 
 	pods, err := s.ClientSet.CoreV1().Pods(s.Namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: s.LabelSelector})
 	if err != nil {
-		panic(err.Error())
+		rw.WriteHeader(500)
+		return
 	}
 
 	ch := make(chan int)
@@ -140,7 +141,8 @@ func (s *server) handleRequest(rw http.ResponseWriter, r *http.Request) {
 
 	for statusCode := range ch {
 		if statusCode < 200 || statusCode >= 300 {
-			panic(err.Error())
+			rw.WriteHeader(statusCode)
+			return
 		}
 	}
 	rw.WriteHeader(http.StatusNoContent)
@@ -149,13 +151,12 @@ func (s *server) handleRequest(rw http.ResponseWriter, r *http.Request) {
 func (s *server) makeCall(pod v1.Pod, r *http.Request, ch chan<- int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	log.Println(pod.GetName(), pod.Spec.NodeName, pod.Spec.Containers)
-	request, err := http.NewRequest(r.Method, s.Protocol+"://"+pod.Status.PodIP+":"+s.Port+r.URL.Path, nil)
-	if err != nil {
-		panic(err.Error())
-	}
+	request := r.Clone(context.TODO())
+	request.Host = pod.Status.PodIP + ":" + s.Port
 	response, err := s.HttpClient.Do(request)
 	if err != nil {
-		panic(err.Error())
+		ch <- 500
+	} else {
+		ch <- response.StatusCode
 	}
-	ch <- response.StatusCode
 }
