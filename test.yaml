@@ -63,6 +63,7 @@ spec:
       containers:
         - name: service-call-multiplexer
           image: ghcr.io/robbilie/service-call-multiplexer:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
           env:

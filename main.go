@@ -153,6 +153,7 @@ func (s *server) makeCall(pod v1.Pod, r *http.Request, ch chan<- int, wg *sync.W
 	defer wg.Done()
 	s.Logger.Debugw("pod info", pod.GetName(), pod.Spec.NodeName, pod.Spec.Containers)
 	request := r.Clone(context.TODO())
+	request.RequestURI = ""
 	request.Host = pod.Status.PodIP + ":" + s.Port
 	response, err := s.HttpClient.Do(request)
 	if err != nil {
