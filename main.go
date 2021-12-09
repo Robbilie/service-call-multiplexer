@@ -123,6 +123,7 @@ func (s *server) handleRequest(rw http.ResponseWriter, r *http.Request) {
 
 	pods, err := s.ClientSet.CoreV1().Pods(s.Namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: s.LabelSelector})
 	if err != nil {
+		s.Logger.Errorw("failed to send request", err)
 		rw.WriteHeader(500)
 		return
 	}
@@ -150,11 +151,12 @@ func (s *server) handleRequest(rw http.ResponseWriter, r *http.Request) {
 
 func (s *server) makeCall(pod v1.Pod, r *http.Request, ch chan<- int, wg *sync.WaitGroup) {
 	defer wg.Done()
-	log.Println(pod.GetName(), pod.Spec.NodeName, pod.Spec.Containers)
+	s.Logger.Debugw("pod info", pod.GetName(), pod.Spec.NodeName, pod.Spec.Containers)
 	request := r.Clone(context.TODO())
 	request.Host = pod.Status.PodIP + ":" + s.Port
 	response, err := s.HttpClient.Do(request)
 	if err != nil {
+		s.Logger.Errorw("failed to send request", err)
 		ch <- 500
 	} else {
 		ch <- response.StatusCode
