@@ -97,7 +97,7 @@ func newServer(logger logger.Logger, serviceNamespace string, serviceName string
 		log.Println(pod.GetName(), pod.Spec.NodeName, pod.Spec.Containers)
 	}
 	client := http.Client{
-		Timeout: time.Duration(10 * time.Second),
+		Timeout: 10 * time.Second,
 	}
 	return &server{
 		Namespace:     serviceNamespace,
