@@ -12,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -91,20 +90,12 @@ func newServer(logger logger.Logger, serviceNamespace string, serviceName string
 	if err != nil {
 		panic(err.Error())
 	}
-	set := labels.Set(service.Spec.Selector)
-	pods, err := clientSet.CoreV1().Pods(serviceNamespace).List(context.TODO(), metav1.ListOptions{LabelSelector: set.AsSelector().String()})
-	if err != nil {
-		panic(err.Error())
-	}
-	for _, pod := range pods.Items {
-		log.Println(pod.GetName(), pod.Spec.NodeName, pod.Spec.Containers)
-	}
 	client := http.Client{
 		Timeout: 10 * time.Second,
 	}
 	return &server{
 		Namespace:     serviceNamespace,
-		LabelSelector: set.AsSelector().String(),
+		LabelSelector: labels.Set(service.Spec.Selector).AsSelector().String(),
 		Port:          servicePort,
 		Scheme:        serviceScheme,
 		ClientSet:     clientSet,
