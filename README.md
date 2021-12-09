@@ -6,4 +6,4 @@ service-call-multiplexer
 ### SERVICE_NAMESPACE ingress-nginx
 ### SERVICE_NAME ingress-nginx-controller
 ### SERVICE_PORT 80
-### SERVICE_PROTOCOL http
+### SERVICE_SCHEME http
